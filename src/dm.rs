@@ -176,6 +176,7 @@ impl DmTicket {
         Ok(res)
     }
 
+    // 获取场次/票档信息
     pub async fn get_perform_info(
         &self,
         ticket_id: String,
@@ -198,6 +199,7 @@ impl DmTicket {
         Ok(perform_info)
     }
 
+    // 购买流程
     pub async fn buy(&self, item_id: &String, sku_id: &String) -> Result<bool> {
         let start = Instant::now();
 
@@ -233,6 +235,7 @@ impl DmTicket {
         }
     }
 
+    // 毫秒转时分秒
     pub fn ms_to_hms(&self, ms: i64) -> (u64, u64, f64) {
         let sec = ms as f64 / 1000.0;
         let hour = (sec / 3600.0) as u64;
@@ -242,6 +245,7 @@ impl DmTicket {
         (hour, min, sec)
     }
 
+    // 程序入口
     pub async fn run(&self) -> Result<()> {
         let ticket_id = self.account.ticket.id.clone();
         let perfomr_idx = self.account.ticket.sessions - 1; // 场次索引
@@ -303,6 +307,7 @@ impl DmTicket {
         let interval = self.account.interval.unwrap_or(50);
         let earliest_submit_time = self.account.earliest_submit_time.unwrap_or(1);
 
+        // 轮询等待开抢
         loop {
             tokio::select! {
                 _ = signal::ctrl_c() => {
@@ -322,7 +327,6 @@ impl DmTicket {
                         let _ =io::stdout().flush();
                     }
 
-                    // info!("剩余时间毫秒:{}", time_left_millis);
                 }
 
                 _ = r.recv() => {

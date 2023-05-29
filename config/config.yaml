@@ -6,7 +6,7 @@ accounts:
       interval: 30
 
       # 最早提前多少毫秒发包。 开抢剩余时间戳 = 开始售票的时间戳 - 当前时间戳。 当开抢剩余时间戳时间小于 submit_time时, 开始发送数据包。
-      earliest_submit_time: 15
+      earliest_submit_time: 0
 
       ticket:
         # 需要抢购的门票ID, 门票详情页URL中的itemId.如:https://m.damai.cn/damai/detail/item.html?utm=&itemId=710947802955

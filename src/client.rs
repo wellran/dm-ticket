@@ -8,11 +8,13 @@ use reqwest::{
 };
 use serde_json::{json, Value};
 
-use crate::models::{ticket::TicketInfoParams, DmRes, DmToken};
+use crate::models::{ticket::TicketInfoParams, DmRes, DmToken, DmLoginRes};
+use crate::models::qrcode::{QrcodeData, QrcodeGenerateParams};
 
 const SUCCESS_CODE: u64 = 200;
 const SYSTEM_ERROR_CODE: u16 = 500;
 
+#[derive(Debug)]
 pub struct TokenClient {
     pub client: Client,
 }
@@ -67,7 +69,7 @@ impl TokenClient {
         Ok(bx_ua)
     }
 
-    /// Get bx token.
+    // Get bx token.
     pub async fn get_bx_token(&self) -> Result<String> {
         let start = Instant::now();
         let bx_token = self.get_value("bx_token").await?;
@@ -80,6 +82,7 @@ impl TokenClient {
     }
 }
 
+#[derive(Debug)]
 pub struct DmClient {
     pub client: Client,
     pub token_client: TokenClient,
@@ -87,6 +90,7 @@ pub struct DmClient {
     pub bx_token: String,
 }
 
+// 获取token
 pub async fn get_token(cookie: &str) -> Result<DmToken> {
     let mut headers = HeaderMap::new();
     let url = "https://mtop.damai.cn/";
@@ -123,6 +127,7 @@ pub async fn get_token(cookie: &str) -> Result<DmToken> {
 }
 
 impl DmClient {
+    // 初始化请求客户端
     pub async fn new(cookie: String) -> Result<Self> {
         let token_client = TokenClient::new()?;
 
@@ -161,6 +166,7 @@ impl DmClient {
         })
     }
 
+    // 请求API
     pub async fn request(&self, url: &str, mut params: Value, data: Value) -> Result<DmRes> {
         let s = format!(
             "{}&{}&{}&{}",
@@ -179,8 +185,6 @@ impl DmClient {
 
         let form = json!({
             "data": serde_json::to_string(&data)?,
-            // "bx-umidtoken": params["bx-umidtoken"],
-            // "bx-ua": params["bx-ua"]
         });
 
         let response = self
@@ -195,4 +199,60 @@ impl DmClient {
 
         Ok(data)
     }
+}
+
+#[derive(Debug)]
+pub struct LoginClient {
+    pub token_client: TokenClient,
+    pub client: Client,
+    pub bx_token: String,
+}
+
+impl LoginClient {
+    pub async fn new() -> Result<Self> {
+        let token_client = TokenClient::new()?;
+        let bx_token = token_client.get_bx_token().await?;
+
+        let mut headers = HeaderMap::new();
+        headers.append("user-agent", HeaderValue::from_str("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36")?);
+        headers.append("referer", HeaderValue::from_str("https://ipassport.damai.cn/mini_login.htm?lang=zh_cn&appName=damai&appEntrance=default&styleType=vertical&bizParams=&notLoadSsoView=true&notKeepLogin=false&isMobile=false&showSnsLogin=false&regUrl=https%3A%2F%2Fpassport.damai.cn%2Fregister&plainReturnUrl=https%3A%2F%2Fpassport.damai.cn%2Flogin&returnUrl=https%3A%2F%2Fpassport.damai.cn%2Fdologin.htm%3FredirectUrl%3Dhttps%25253A%25252F%25252Fwww.damai.cn%25252F%26platform%3D106002&rnd=0.6260742856882737")?);
+
+        let client = reqwest::Client::builder()
+            .default_headers(headers)
+            .cookie_store(true)
+            .http2_prior_knowledge()
+            .user_agent("Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3")
+            .use_rustls_tls()
+            .build()?;
+        Ok(Self {
+            token_client,
+            client,
+            bx_token,
+        })
+    }
+
+    pub async fn request(&self, url: &str, mut params: Value) -> Result<DmLoginRes> {
+
+        params["bx-umidtoken"] = self.bx_token.clone().into();
+        params["bx-ua"] = self.token_client.get_bx_ua().await?.into();
+
+        let response = self
+            .client
+            .post(url)
+            .query(&params)
+            .send()
+            .await?;
+
+        let data = response.json::<DmLoginRes>().await?;
+
+        Ok(data)
+    }
+
+    pub async fn generate_qrcode(&self) -> Result<QrcodeData> {
+        let url = "https://ipassport.damai.cn/newlogin/qrcode/generate.do";
+        let res = self.request(url, QrcodeGenerateParams::build()?).await?;
+        let data = serde_json::from_value(res.content.data)?;
+        Ok(data)
+    }
+
 }

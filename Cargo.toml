@@ -20,3 +20,7 @@ dotenv = {version= "0.15.0"}
 futures = {version="0.3.28"}
 chrono = {version="0.4.24", features = ["unstable-locales"] }
 async-channel={version = "1.8"}
+
+[[bin]]
+name = "dm-login"
+path = "src/bin/login.rs"
