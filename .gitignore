@@ -18,3 +18,5 @@ Cargo.lock
 config/config.yml
 
 .idea/
+
+.env

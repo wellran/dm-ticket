@@ -1,8 +1,7 @@
 pub mod order;
 pub mod perform;
-pub mod ticket;
 pub mod qrcode;
-
+pub mod ticket;
 
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
@@ -34,7 +33,7 @@ pub struct DmLoginResContent {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DmLoginRes {
     #[serde(rename = "hasError")]
-    pub has_error:  bool,
+    pub has_error: bool,
 
     pub content: DmLoginResContent,
 }
